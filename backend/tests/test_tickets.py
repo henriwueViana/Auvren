@@ -117,3 +117,61 @@ def test_update_ticket_with_invalid_status(client):
     )
 
     assert response.status_code == 422
+
+def test_update_ticket_status_records_history(client):
+    create_response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Erro ao acessar o sistema",
+            "description": "O usuário não consegue entrar no painel.",
+        },
+    )
+
+    ticket_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/api/v1/tickets/{ticket_id}/status",
+        json={"status": "in_progress"},
+    )
+
+    assert response.status_code == 200
+
+    # Este endpoint será implementado na próxima etapa.
+    history_response = client.get(
+        f"/api/v1/tickets/{ticket_id}/history"
+    )
+
+    assert history_response.status_code == 200
+    history = history_response.json()
+
+    assert len(history) == 1
+    assert history[0]["previous_status"] == "open"
+    assert history[0]["new_status"] == "in_progress"
+
+
+def test_same_status_does_not_create_duplicate_history(client):
+    create_response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Erro ao acessar o sistema",
+            "description": "O usuário não consegue entrar no painel.",
+        },
+    )
+
+    ticket_id = create_response.json()["id"]
+
+    for _ in range(2):
+        response = client.patch(
+            f"/api/v1/tickets/{ticket_id}/status",
+            json={"status": "in_progress"},
+        )
+        assert response.status_code == 200
+
+    history_response = client.get(
+        f"/api/v1/tickets/{ticket_id}/history"
+    )
+
+    assert history_response.status_code == 200
+    history = history_response.json()
+
+    assert len(history) == 1

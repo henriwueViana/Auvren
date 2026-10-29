@@ -1,12 +1,13 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.ticket import TicketCreate, TicketResponse, TicketStatusUpdate
+from app.schemas.ticket_status_history import TicketStatusHistoryResponse
 from app.services.ticket_service import (
     create_ticket,
     get_ticket,
+    list_ticket_status_history,
     list_tickets,
     update_ticket_status,
 )
@@ -61,3 +62,20 @@ def update_ticket_status_endpoint(
         )
 
     return ticket
+@router.get(
+    "/{ticket_id}/history",
+    response_model=list[TicketStatusHistoryResponse],
+)
+def list_ticket_status_history_endpoint(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+):
+    history = list_ticket_status_history(db, ticket_id)
+
+    if history is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chamado não encontrado",
+        )
+
+    return history

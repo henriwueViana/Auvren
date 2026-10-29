@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base, get_db
 from app.main import app
 from app.models.ticket import Ticket
+from app.models.ticket_status_history import TicketStatusHistory
 
 
 @pytest.fixture
@@ -41,3 +42,5 @@ def client():
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
     engine.dispose()
+
+ 

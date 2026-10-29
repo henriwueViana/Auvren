@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.ticket import Ticket
+from app.models.ticket_status_history import TicketStatusHistory
 from app.schemas.ticket import TicketCreate
 
 
@@ -38,56 +39,42 @@ def update_ticket_status(
     if ticket is None:
         return None
 
+    # Não registra histórico se o status não mudou.
+    if ticket.status == new_status:
+        return ticket
+
+    history_entry = TicketStatusHistory(
+        ticket_id=ticket.id,
+        previous_status=ticket.status,
+        new_status=new_status,
+    )
+
     ticket.status = new_status
+    db.add(history_entry)
+
+    # Salva a alteração e o histórico na mesma transação.
     db.commit()
     db.refresh(ticket)
 
     return ticket
 
-def test_update_ticket_status(client):
-    create_response = client.post(
-        "/api/v1/tickets",
-        json={
-            "title": "Erro ao acessar o sistema",
-            "description": "O usuário não consegue entrar no painel.",
-        },
+
+def list_ticket_status_history(
+    db: Session,
+    ticket_id: int,
+) -> list[TicketStatusHistory] | None:
+    ticket = db.get(Ticket, ticket_id)
+
+    if ticket is None:
+        return None
+
+    statement = (
+        select(TicketStatusHistory)
+        .where(TicketStatusHistory.ticket_id == ticket_id)
+        .order_by(
+            TicketStatusHistory.changed_at.asc(),
+            TicketStatusHistory.id.asc(),
+        )
     )
 
-    ticket_id = create_response.json()["id"]
-
-    response = client.patch(
-        f"/api/v1/tickets/{ticket_id}/status",
-        json={"status": "in_progress"},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["status"] == "in_progress"
-
-
-def test_update_nonexistent_ticket_status(client):
-    response = client.patch(
-        "/api/v1/tickets/999/status",
-        json={"status": "resolved"},
-    )
-
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Chamado não encontrado"
-
-
-def test_update_ticket_with_invalid_status(client):
-    create_response = client.post(
-        "/api/v1/tickets",
-        json={
-            "title": "Erro ao acessar o sistema",
-            "description": "O usuário não consegue entrar no painel.",
-        },
-    )
-
-    ticket_id = create_response.json()["id"]
-
-    response = client.patch(
-        f"/api/v1/tickets/{ticket_id}/status",
-        json={"status": "closed"},
-    )
-
-    assert response.status_code == 422
+    return list(db.scalars(statement).all())

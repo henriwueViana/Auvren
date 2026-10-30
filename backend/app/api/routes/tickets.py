@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.schemas.ticket import TicketCreate, TicketResponse, TicketStatusUpdate
 from app.schemas.ticket_status_history import TicketStatusHistoryResponse
 from app.services.ticket_service import (
+    InvalidStatusTransition,
     create_ticket,
     get_ticket,
     list_ticket_status_history,
@@ -37,6 +38,21 @@ def list_tickets_endpoint(
         default=None,
         alias="status",
     ),
+
+    priority_filter: Literal["low", "medium", "high", "critical"] | None = Query(
+        default=None,
+        alias="priority",
+    ),
+    category_filter: Literal[
+        "hardware",
+        "software",
+        "network",
+        "access",
+        "other",
+    ] | None = Query(
+        default=None,
+        alias="category",
+    ),
     search: str | None = Query(default=None, min_length=1, max_length=200),
     sort_by: Literal["created_at", "title", "status", "id"] = "created_at",
     sort_order: Literal["asc", "desc"] = "desc",
@@ -50,6 +66,8 @@ def list_tickets_endpoint(
         search=search,
         sort_by=sort_by,
         sort_order=sort_order,
+        priority=priority_filter,
+        category=category_filter,
     )
 
 
@@ -75,7 +93,13 @@ def update_ticket_status_endpoint(
     data: TicketStatusUpdate,
     db: Session = Depends(get_db),
 ):
-    ticket = update_ticket_status(db, ticket_id, data.status)
+    try:
+        ticket = update_ticket_status(db, ticket_id, data.status)
+    except InvalidStatusTransition as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
 
     if ticket is None:
         raise HTTPException(

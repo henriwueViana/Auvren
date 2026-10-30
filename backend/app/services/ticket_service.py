@@ -5,6 +5,15 @@ from app.models.ticket import Ticket
 from app.models.ticket_status_history import TicketStatusHistory
 from app.schemas.ticket import TicketCreate
 
+ALLOWED_STATUS_TRANSITIONS = {
+    "open": {"in_progress"},
+    "in_progress": {"resolved"},
+    "resolved": {"in_progress"},
+}
+
+
+class InvalidStatusTransition(Exception):
+    pass
 
 def create_ticket(db: Session, data: TicketCreate) -> Ticket:
     ticket = Ticket(
@@ -25,6 +34,8 @@ def list_tickets(
     page: int = 1,
     limit: int = 10,
     status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
     search: str | None = None,
     sort_by: str = "created_at",
     sort_order: str = "desc",
@@ -42,6 +53,11 @@ def list_tickets(
                 Ticket.description.ilike(term),
             )
         )
+    if priority:
+        statement = statement.where(Ticket.priority == priority)
+
+    if category:
+        statement = statement.where(Ticket.category == category)
 
     sort_columns = {
         "created_at": Ticket.created_at,
@@ -80,6 +96,11 @@ def update_ticket_status(
     if ticket.status == new_status:
         return ticket
 
+    if new_status not in ALLOWED_STATUS_TRANSITIONS.get(ticket.status, set()):
+        raise InvalidStatusTransition(
+            f"Não é permitido alterar de '{ticket.status}' para '{new_status}'."
+        )
+    
     history_entry = TicketStatusHistory(
         ticket_id=ticket.id,
         previous_status=ticket.status,

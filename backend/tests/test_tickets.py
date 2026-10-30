@@ -417,3 +417,208 @@ def test_create_ticket_rejects_invalid_category(client):
     )
 
     assert response.status_code == 422
+
+
+def test_open_ticket_can_move_to_in_progress(client):
+    ticket = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema de acesso",
+            "description": "O usuário não consegue entrar.",
+        },
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "in_progress"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "in_progress"
+
+
+def test_in_progress_ticket_can_be_resolved(client):
+    ticket = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema de acesso",
+            "description": "O usuário não consegue entrar.",
+        },
+    ).json()
+
+    client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "in_progress"},
+    )
+
+    response = client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "resolved"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "resolved"
+
+
+def test_resolved_ticket_can_be_reopened(client):
+    ticket = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema de acesso",
+            "description": "O usuário não consegue entrar.",
+        },
+    ).json()
+
+    client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "in_progress"},
+    )
+
+    client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "resolved"},
+    )
+
+    response = client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "in_progress"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "in_progress"
+
+
+def test_open_ticket_cannot_be_resolved_directly(client):
+    ticket = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema de acesso",
+            "description": "O usuário não consegue entrar.",
+        },
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "resolved"},
+    )
+
+    assert response.status_code == 409
+    assert "Não é permitido" in response.json()["detail"]
+
+
+def test_in_progress_ticket_cannot_return_to_open(client):
+    ticket = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema de acesso",
+            "description": "O usuário não consegue entrar.",
+        },
+    ).json()
+
+    client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "in_progress"},
+    )
+
+    response = client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        json={"status": "open"},
+    )
+
+    assert response.status_code == 409
+    assert "Não é permitido" in response.json()["detail"]
+
+def test_filter_tickets_by_priority(client):
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Chamado urgente",
+            "description": "Servidor completamente indisponível.",
+            "priority": "critical",
+        },
+    )
+
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Chamado normal",
+            "description": "Dúvida sobre utilização.",
+            "priority": "low",
+        },
+    )
+
+    response = client.get("/api/v1/tickets?priority=critical")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["priority"] == "critical"
+
+
+def test_filter_tickets_by_category(client):
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema no computador",
+            "description": "Computador não liga.",
+            "category": "hardware",
+        },
+    )
+
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Erro no aplicativo",
+            "description": "Aplicativo fecha sozinho.",
+            "category": "software",
+        },
+    )
+
+    response = client.get("/api/v1/tickets?category=hardware")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["category"] == "hardware"
+
+
+def test_filter_tickets_by_priority_and_category(client):
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Falha crítica na rede",
+            "description": "Rede completamente indisponível.",
+            "priority": "critical",
+            "category": "network",
+        },
+    )
+
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Falha comum na rede",
+            "description": "Conexão apresenta lentidão.",
+            "priority": "low",
+            "category": "network",
+        },
+    )
+
+    response = client.get(
+        "/api/v1/tickets?priority=critical&category=network"
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["priority"] == "critical"
+    assert response.json()[0]["category"] == "network"
+
+
+def test_list_tickets_rejects_invalid_priority_and_category(client):
+    response_priority = client.get(
+        "/api/v1/tickets?priority=urgent"
+    )
+
+    response_category = client.get(
+        "/api/v1/tickets?category=finance"
+    )
+
+    assert response_priority.status_code == 422
+    assert response_category.status_code == 422

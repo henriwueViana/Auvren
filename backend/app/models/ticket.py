@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 from sqlalchemy import DateTime, String, Text, func
@@ -13,11 +12,27 @@ class Ticket(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+
     status: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
         default="open",
     )
+
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="medium",
+        server_default="medium",
+    )
+
+    category: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="other",
+        server_default="other",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

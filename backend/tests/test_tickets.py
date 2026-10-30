@@ -175,3 +175,245 @@ def test_same_status_does_not_create_duplicate_history(client):
     history = history_response.json()
 
     assert len(history) == 1
+
+def test_list_tickets_pagination(client):
+    for title in ["Chamado A", "Chamado B", "Chamado C"]:
+        client.post(
+            "/api/v1/tickets",
+            json={
+                "title": title,
+                "description": "Descrição do chamado para teste.",
+            },
+        )
+
+    response = client.get("/api/v1/tickets?page=1&limit=2")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    response = client.get("/api/v1/tickets?page=2&limit=2")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
+def test_filter_tickets_by_status(client):
+    create_response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Chamado em andamento",
+            "description": "Descrição para testar o filtro.",
+        },
+    )
+
+    ticket_id = create_response.json()["id"]
+
+    client.patch(
+        f"/api/v1/tickets/{ticket_id}/status",
+        json={"status": "in_progress"},
+    )
+
+    response = client.get("/api/v1/tickets?status=in_progress")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["status"] == "in_progress"
+
+
+def test_search_tickets_by_title(client):
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Erro no servidor principal",
+            "description": "Problema de conexão.",
+        },
+    )
+
+    response = client.get("/api/v1/tickets?search=servidor")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert "servidor" in response.json()[0]["title"]
+
+
+def test_search_tickets_by_description(client):
+    client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Falha de sistema",
+            "description": "O banco de dados está indisponível.",
+        },
+    )
+
+    response = client.get("/api/v1/tickets?search=indisponível")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert "indisponível" in response.json()[0]["description"]
+
+
+def test_sort_tickets_by_title(client):
+    for title in ["Zebra", "Abacaxi", "Macaco"]:
+        client.post(
+            "/api/v1/tickets",
+            json={
+                "title": title,
+                "description": "Descrição para teste de ordenação.",
+            },
+        )
+
+    response = client.get(
+        "/api/v1/tickets?sort_by=title&sort_order=asc"
+    )
+
+    assert response.status_code == 200
+
+    titles = [ticket["title"] for ticket in response.json()]
+
+    assert titles == ["Abacaxi", "Macaco", "Zebra"]
+
+
+def test_list_tickets_rejects_invalid_status(client):
+    response = client.get("/api/v1/tickets?status=closed")
+
+    assert response.status_code == 422
+
+
+def test_list_tickets_rejects_invalid_pagination(client):
+    response = client.get("/api/v1/tickets?page=0")
+
+    assert response.status_code == 422
+
+def test_create_ticket_with_high_priority(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Servidor indisponível",
+            "description": "O servidor principal está fora do ar.",
+            "priority": "high",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["priority"] == "high"
+
+
+def test_create_ticket_with_default_priority(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Dúvida sobre sistema",
+            "description": "O usuário precisa de orientação.",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["priority"] == "medium"
+
+
+def test_create_ticket_with_critical_priority(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Sistema totalmente parado",
+            "description": "Todos os usuários estão sem acesso.",
+            "priority": "critical",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["priority"] == "critical"
+
+
+def test_create_ticket_rejects_invalid_priority(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Erro no sistema",
+            "description": "O usuário não consegue acessar.",
+            "priority": "urgent",
+        },
+    )
+
+    assert response.status_code == 422
+
+def test_create_ticket_with_hardware_category(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema no computador",
+            "description": "O computador não está ligando.",
+            "category": "hardware",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["category"] == "hardware"
+
+
+def test_create_ticket_with_software_category(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Erro no aplicativo",
+            "description": "O aplicativo fecha inesperadamente.",
+            "category": "software",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["category"] == "software"
+
+
+def test_create_ticket_with_network_category(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema na internet",
+            "description": "A conexão está instável.",
+            "category": "network",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["category"] == "network"
+
+
+def test_create_ticket_with_access_category(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema de login",
+            "description": "O usuário não consegue acessar sua conta.",
+            "category": "access",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["category"] == "access"
+
+
+def test_create_ticket_with_default_category(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Solicitação geral",
+            "description": "O usuário precisa de atendimento.",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["category"] == "other"
+
+
+def test_create_ticket_rejects_invalid_category(client):
+    response = client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Problema no sistema",
+            "description": "O usuário relatou um problema.",
+            "category": "finance",
+        },
+    )
+
+    assert response.status_code == 422

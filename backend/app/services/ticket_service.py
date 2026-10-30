@@ -1,5 +1,4 @@
-
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.ticket import Ticket
@@ -11,6 +10,8 @@ def create_ticket(db: Session, data: TicketCreate) -> Ticket:
     ticket = Ticket(
         title=data.title,
         description=data.description,
+        priority=data.priority,
+        category=data.category,
     )
 
     db.add(ticket)
@@ -19,9 +20,45 @@ def create_ticket(db: Session, data: TicketCreate) -> Ticket:
 
     return ticket
 
+def list_tickets(
+    db: Session,
+    page: int = 1,
+    limit: int = 10,
+    status: str | None = None,
+    search: str | None = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+) -> list[Ticket]:
+    statement = select(Ticket)
 
-def list_tickets(db: Session) -> list[Ticket]:
-    statement = select(Ticket).order_by(Ticket.created_at.desc())
+    if status:
+        statement = statement.where(Ticket.status == status)
+
+    if search:
+        term = f"%{search.strip()}%"
+        statement = statement.where(
+            or_(
+                Ticket.title.ilike(term),
+                Ticket.description.ilike(term),
+            )
+        )
+
+    sort_columns = {
+        "created_at": Ticket.created_at,
+        "title": Ticket.title,
+        "status": Ticket.status,
+        "id": Ticket.id,
+    }
+
+    column = sort_columns[sort_by]
+
+    if sort_order == "asc":
+        statement = statement.order_by(column.asc())
+    else:
+        statement = statement.order_by(column.desc())
+
+    statement = statement.offset((page - 1) * limit).limit(limit)
+
     return list(db.scalars(statement).all())
 
 

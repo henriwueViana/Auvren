@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -28,8 +30,27 @@ def create_ticket_endpoint(
 
 
 @router.get("", response_model=list[TicketResponse])
-def list_tickets_endpoint(db: Session = Depends(get_db)):
-    return list_tickets(db)
+def list_tickets_endpoint(
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
+    status_filter: Literal["open", "in_progress", "resolved"] | None = Query(
+        default=None,
+        alias="status",
+    ),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    sort_by: Literal["created_at", "title", "status", "id"] = "created_at",
+    sort_order: Literal["asc", "desc"] = "desc",
+    db: Session = Depends(get_db),
+):
+    return list_tickets(
+        db,
+        page=page,
+        limit=limit,
+        status=status_filter,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
@@ -47,6 +68,7 @@ def get_ticket_endpoint(
 
     return ticket
 
+
 @router.patch("/{ticket_id}/status", response_model=TicketResponse)
 def update_ticket_status_endpoint(
     ticket_id: int,
@@ -62,6 +84,8 @@ def update_ticket_status_endpoint(
         )
 
     return ticket
+
+
 @router.get(
     "/{ticket_id}/history",
     response_model=list[TicketStatusHistoryResponse],

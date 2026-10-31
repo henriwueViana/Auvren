@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -47,4 +46,9 @@ class Ticket(Base):
     )
     organization: Mapped["Organization"] = relationship(
         back_populates="tickets",
+    )
+
+    triages: Mapped[list["TicketTriage"]] = relationship(
+        back_populates="ticket",
+        cascade="all, delete-orphan",
     )

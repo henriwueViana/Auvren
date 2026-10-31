@@ -9,6 +9,14 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.ticket import TicketCreate, TicketResponse, TicketStatusUpdate
 from app.schemas.ticket_status_history import TicketStatusHistoryResponse
+from app.schemas.triage import TicketTriageResponse, TicketTriageReview
+
+from app.services.triage_service import (
+    create_ticket_triage,
+    list_ticket_triages,
+    review_ticket_triage,
+    TriageProviderError,
+)
 from app.services.ticket_service import (
     InvalidStatusTransition,
     create_ticket,
@@ -152,3 +160,98 @@ def list_ticket_status_history_endpoint(
         )
 
     return history
+
+
+@router.post(
+    "/{ticket_id}/triage",
+    response_model=TicketTriageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_triage_endpoint(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ticket = get_ticket(
+        db,
+        ticket_id,
+        organization_id=current_user.organization_id,
+    )
+
+    if ticket is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chamado não encontrado.",
+        )
+
+    try:
+        return create_ticket_triage(db, ticket)
+    except TriageProviderError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{ticket_id}/triages",
+    response_model=list[TicketTriageResponse],
+)
+def list_triages_endpoint(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    triages = list_ticket_triages(
+        db,
+        ticket_id,
+        current_user.organization_id,
+    )
+
+    if triages is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chamado não encontrado.",
+        )
+
+    return triages
+
+
+@router.patch(
+    "/{ticket_id}/triages/{triage_id}/review",
+    response_model=TicketTriageResponse,
+)
+def review_triage_endpoint(
+    ticket_id: int,
+    triage_id: int,
+    data: TicketTriageReview,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        triage = review_ticket_triage(
+            db=db,
+            ticket_id=ticket_id,
+            triage_id=triage_id,
+            organization_id=current_user.organization_id,
+            reviewer_id=current_user.id,
+            review_status=data.review_status,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        )
+
+    if triage is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chamado ou análise não encontrado.",
+        )
+
+    return triage

@@ -9,4 +9,5 @@ __all__ = [
     "User",
     "Ticket",
     "TicketStatusHistory",
+    "TicketTriage",
 ]

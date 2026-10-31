@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.tickets import router as tickets_router
 from app.api.routes.auth import router as auth_router
@@ -10,6 +11,14 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Adicione esta configuração de CORS logo abaixo da criação do 'app'
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Permite o frontend Vite
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos os métodos (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],  # Permite todos os cabeçalhos
+)
 
 @app.get("/health", tags=["Monitoramento"])
 def health_check():

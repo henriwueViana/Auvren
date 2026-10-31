@@ -64,3 +64,18 @@ def authenticated_client(client):
     })
 
     return client
+
+
+
+
+@pytest.fixture
+def db_session(client):
+    override_get_db = app.dependency_overrides[get_db]
+    db = next(override_get_db())
+
+    try:
+        yield db
+    finally:
+        db.close()
+
+

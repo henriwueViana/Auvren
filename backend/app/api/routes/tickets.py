@@ -1,9 +1,12 @@
+
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
+from app.models.user import User
 from app.schemas.ticket import TicketCreate, TicketResponse, TicketStatusUpdate
 from app.schemas.ticket_status_history import TicketStatusHistoryResponse
 from app.services.ticket_service import (
@@ -26,8 +29,13 @@ router = APIRouter(prefix="/api/v1/tickets", tags=["Tickets"])
 def create_ticket_endpoint(
     data: TicketCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    return create_ticket(db, data)
+    return create_ticket(
+        db,
+        data,
+        organization_id=current_user.organization_id,
+    )
 
 
 @router.get("", response_model=list[TicketResponse])
@@ -38,7 +46,6 @@ def list_tickets_endpoint(
         default=None,
         alias="status",
     ),
-
     priority_filter: Literal["low", "medium", "high", "critical"] | None = Query(
         default=None,
         alias="priority",
@@ -57,9 +64,11 @@ def list_tickets_endpoint(
     sort_by: Literal["created_at", "title", "status", "id"] = "created_at",
     sort_order: Literal["asc", "desc"] = "desc",
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return list_tickets(
         db,
+        organization_id=current_user.organization_id,
         page=page,
         limit=limit,
         status=status_filter,
@@ -75,8 +84,13 @@ def list_tickets_endpoint(
 def get_ticket_endpoint(
     ticket_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    ticket = get_ticket(db, ticket_id)
+    ticket = get_ticket(
+        db,
+        ticket_id,
+        organization_id=current_user.organization_id,
+    )
 
     if ticket is None:
         raise HTTPException(
@@ -92,9 +106,15 @@ def update_ticket_status_endpoint(
     ticket_id: int,
     data: TicketStatusUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        ticket = update_ticket_status(db, ticket_id, data.status)
+        ticket = update_ticket_status(
+            db,
+            ticket_id,
+            data.status,
+            organization_id=current_user.organization_id,
+        )
     except InvalidStatusTransition as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -117,8 +137,13 @@ def update_ticket_status_endpoint(
 def list_ticket_status_history_endpoint(
     ticket_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    history = list_ticket_status_history(db, ticket_id)
+    history = list_ticket_status_history(
+        db,
+        ticket_id,
+        organization_id=current_user.organization_id,
+    )
 
     if history is None:
         raise HTTPException(

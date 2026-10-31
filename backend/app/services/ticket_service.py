@@ -1,9 +1,11 @@
+
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.ticket import Ticket
 from app.models.ticket_status_history import TicketStatusHistory
 from app.schemas.ticket import TicketCreate
+
 
 ALLOWED_STATUS_TRANSITIONS = {
     "open": {"in_progress"},
@@ -15,8 +17,14 @@ ALLOWED_STATUS_TRANSITIONS = {
 class InvalidStatusTransition(Exception):
     pass
 
-def create_ticket(db: Session, data: TicketCreate) -> Ticket:
+
+def create_ticket(
+    db: Session,
+    data: TicketCreate,
+    organization_id: int,
+) -> Ticket:
     ticket = Ticket(
+        organization_id=organization_id,
         title=data.title,
         description=data.description,
         priority=data.priority,
@@ -29,8 +37,10 @@ def create_ticket(db: Session, data: TicketCreate) -> Ticket:
 
     return ticket
 
+
 def list_tickets(
     db: Session,
+    organization_id: int,
     page: int = 1,
     limit: int = 10,
     status: str | None = None,
@@ -40,7 +50,9 @@ def list_tickets(
     sort_by: str = "created_at",
     sort_order: str = "desc",
 ) -> list[Ticket]:
-    statement = select(Ticket)
+    statement = select(Ticket).where(
+        Ticket.organization_id == organization_id
+    )
 
     if status:
         statement = statement.where(Ticket.status == status)
@@ -53,6 +65,7 @@ def list_tickets(
                 Ticket.description.ilike(term),
             )
         )
+
     if priority:
         statement = statement.where(Ticket.priority == priority)
 
@@ -78,16 +91,26 @@ def list_tickets(
     return list(db.scalars(statement).all())
 
 
-def get_ticket(db: Session, ticket_id: int) -> Ticket | None:
-    return db.get(Ticket, ticket_id)
+def get_ticket(
+    db: Session,
+    ticket_id: int,
+    organization_id: int,
+) -> Ticket | None:
+    statement = select(Ticket).where(
+        Ticket.id == ticket_id,
+        Ticket.organization_id == organization_id,
+    )
+
+    return db.scalar(statement)
 
 
 def update_ticket_status(
     db: Session,
     ticket_id: int,
     new_status: str,
+    organization_id: int,
 ) -> Ticket | None:
-    ticket = db.get(Ticket, ticket_id)
+    ticket = get_ticket(db, ticket_id, organization_id)
 
     if ticket is None:
         return None
@@ -96,11 +119,13 @@ def update_ticket_status(
     if ticket.status == new_status:
         return ticket
 
-    if new_status not in ALLOWED_STATUS_TRANSITIONS.get(ticket.status, set()):
+    if new_status not in ALLOWED_STATUS_TRANSITIONS.get(
+        ticket.status, set()
+    ):
         raise InvalidStatusTransition(
             f"Não é permitido alterar de '{ticket.status}' para '{new_status}'."
         )
-    
+
     history_entry = TicketStatusHistory(
         ticket_id=ticket.id,
         previous_status=ticket.status,
@@ -120,8 +145,9 @@ def update_ticket_status(
 def list_ticket_status_history(
     db: Session,
     ticket_id: int,
+    organization_id: int,
 ) -> list[TicketStatusHistory] | None:
-    ticket = db.get(Ticket, ticket_id)
+    ticket = get_ticket(db, ticket_id, organization_id)
 
     if ticket is None:
         return None

@@ -7,8 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.main import app
-from app.models.ticket import Ticket
-from app.models.ticket_status_history import TicketStatusHistory
+from app.models import Organization, User, Ticket, TicketStatusHistory
 
 
 @pytest.fixture
@@ -43,4 +42,25 @@ def client():
     Base.metadata.drop_all(bind=engine)
     engine.dispose()
 
- 
+
+@pytest.fixture
+def authenticated_client(client):
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "organization_name": "Organização de Testes",
+            "name": "Usuário de Teste",
+            "email": "teste@au vren.com".replace(" ", ""),
+            "password": "SenhaSegura123",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+
+    token = response.json()["access_token"]
+
+    client.headers.update({
+        "Authorization": f"Bearer {token}"
+    })
+
+    return client

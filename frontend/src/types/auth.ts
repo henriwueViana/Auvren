@@ -1,21 +1,27 @@
-// src/types/auth.ts
-export interface RegisterCredentials {
-  organization_name: string;
-  name: string;
-  email: string;
-  password: string;
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  organization_name: string
+  name: string
+  email: string
+  password: string
 }
 
 export interface User {
-  id: number;
-  email: string;
-  full_name?: string;
-  role: 'admin' | 'agent';
-  organization_id: number;
+  id: number
+  organization_id: number
+  name: string
+  email: string
+  role: string
+  is_active: boolean
 }
 
 export interface AuthResponse {
-  access_token: string;
-  token_type: string;
-  user: User;
+  access_token: string
+  token_type: string
+  user: User
 }

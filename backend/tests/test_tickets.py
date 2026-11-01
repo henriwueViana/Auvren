@@ -622,3 +622,31 @@ def test_list_tickets_rejects_invalid_priority_and_category(authenticated_client
 
     assert response_priority.status_code == 422
     assert response_category.status_code == 422
+
+
+def test_ticket_history_returns_404_for_nonexistent_ticket(
+    authenticated_client,
+):
+    response = authenticated_client.get(
+        "/api/v1/tickets/99999/history"
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Chamado não encontrado"
+
+
+
+def test_review_nonexistent_triage_returns_404(
+    authenticated_client,
+):
+    response = authenticated_client.patch(
+        "/api/v1/tickets/99999/triages/99999/review",
+        json={
+            "review_status": "accepted",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == (
+        "Chamado ou análise não encontrado."
+    )

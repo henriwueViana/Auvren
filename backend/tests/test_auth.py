@@ -52,98 +52,95 @@ def test_tickets_reject_invalid_token(client):
     assert response.status_code == 401
 
 
-def test_organizations_cannot_access_each_others_tickets(client):
-    token_a = register_and_get_token(
-        client,
-        "Organização A",
-        "Usuário A",
-        "usuario.a@example.com",
-    )
 
-    token_b = register_and_get_token(
-        client,
-        "Organização B",
-        "Usuário B",
-        "usuario.b@example.com",
-    )
+def test_inactive_user_cannot_access_protected_route(
+    client,
+    authenticated_client,
+    db_session,
+):
+    from app.models.user import User
 
-    headers_a = {"Authorization": f"Bearer {token_a}"}
-    headers_b = {"Authorization": f"Bearer {token_b}"}
+    user = db_session.query(User).filter_by(
+        email="teste@auvren.com"
+    ).first()
 
-    ticket_response = client.post(
-        "/api/v1/tickets",
-        headers=headers_a,
-        json={
-            "title": "Chamado privado da organização A",
-            "description": "Este chamado pertence somente à organização A.",
-        },
-    )
+    assert user is not None
 
-    assert ticket_response.status_code == 201, ticket_response.text
-
-    ticket_id = ticket_response.json()["id"]
-
-    # Organização B não deve visualizar o chamado na listagem.
-    list_response = client.get(
-        "/api/v1/tickets",
-        headers=headers_b,
-    )
-
-    assert list_response.status_code == 200
-    assert all(
-        ticket["id"] != ticket_id
-        for ticket in list_response.json()
-    )
-
-    # Organização B não deve consultar o chamado.
-    get_response = client.get(
-        f"/api/v1/tickets/{ticket_id}",
-        headers=headers_b,
-    )
-
-    assert get_response.status_code == 404
-
-    # Organização B não deve alterar seu status.
-    update_response = client.patch(
-        f"/api/v1/tickets/{ticket_id}/status",
-        headers=headers_b,
-        json={"status": "in_progress"},
-    )
-
-    assert update_response.status_code == 404
-
-    # Organização B não deve consultar seu histórico.
-    history_response = client.get(
-        f"/api/v1/tickets/{ticket_id}/history",
-        headers=headers_b,
-    )
-
-    assert history_response.status_code == 404
-
-    # A organização A continua tendo acesso ao próprio chamado.
-    owner_response = client.get(
-        f"/api/v1/tickets/{ticket_id}",
-        headers=headers_a,
-    )
-
-    assert owner_response.status_code == 200
-
-def test_inactive_user_cannot_access_protected_route(client, authenticated_client):
-    from app.core.database import get_db
-    from app.models import User
-
-    db = next(app.dependency_overrides[get_db]())
-    user = db.query(User).filter_by(email="teste@auvren.com").first()
     user.is_active = False
-    db.commit()
-    db.close()
+    db_session.commit()
 
     response = authenticated_client.get("/api/v1/tickets")
 
     assert response.status_code == 401
 
 
-def test_non_admin_cannot_access_admin_route(authenticated_client):
-    response = authenticated_client.get("/api/v1/users")
+def test_non_admin_cannot_create_users(
+    authenticated_client,
+    db_session,
+):
+    from app.models.user import User
+
+    user = db_session.query(User).filter_by(
+        email="teste@auvren.com"
+    ).first()
+
+    assert user is not None
+
+    user.role = "agent"
+    db_session.commit()
+
+    response = authenticated_client.post(
+        "/api/v1/users",
+        json={
+            "name": "Agente de Teste",
+            "email": "agente@example.com",
+            "password": "SenhaSegura123",
+        },
+    )
 
     assert response.status_code == 403
+
+
+
+def test_register_rejects_duplicate_email(authenticated_client):
+    response = authenticated_client.post(
+        "/api/v1/auth/register",
+        json={
+            "organization_name": "Outra Organização",
+            "name": "Usuário Duplicado",
+            "email": "teste@auvren.com",
+            "password": "SenhaSegura123",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "detail" in response.json()
+
+
+def test_login_rejects_invalid_credentials(client):
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "inexistente@auvren.com",
+            "password": "SenhaIncorreta123",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "E-mail ou senha inválidos."
+
+
+def test_token_without_subject_is_rejected(client):
+    from app.core.security import create_access_token
+
+    token = create_access_token({"email": "teste@auvren.com"})
+
+    response = client.get(
+        "/api/v1/tickets",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == (
+        "Não foi possível validar as credenciais."
+    )

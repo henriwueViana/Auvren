@@ -127,3 +127,23 @@ def test_organizations_cannot_access_each_others_tickets(client):
     )
 
     assert owner_response.status_code == 200
+
+def test_inactive_user_cannot_access_protected_route(client, authenticated_client):
+    from app.core.database import get_db
+    from app.models import User
+
+    db = next(app.dependency_overrides[get_db]())
+    user = db.query(User).filter_by(email="teste@auvren.com").first()
+    user.is_active = False
+    db.commit()
+    db.close()
+
+    response = authenticated_client.get("/api/v1/tickets")
+
+    assert response.status_code == 401
+
+
+def test_non_admin_cannot_access_admin_route(authenticated_client):
+    response = authenticated_client.get("/api/v1/users")
+
+    assert response.status_code == 403

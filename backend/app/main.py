@@ -4,6 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.tickets import router as tickets_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.users import router as users_router
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 app = FastAPI(
     title="Auvren",
@@ -18,6 +21,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],  # Permite todos os métodos (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Permite todos os cabeçalhos
+)
+limiter = Limiter(key_func=get_remote_address)
+
+app.state.limiter = limiter
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler,
 )
 
 @app.get("/health", tags=["Monitoramento"])

@@ -16,3 +16,8 @@ dist/
 # Editor e sistema
 .vscode/
 .DS_Store
+
+# Testes e cobertura
+.coverage
+.coverage.*
+htmlcov/

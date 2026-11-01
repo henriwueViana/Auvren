@@ -1,0 +1,36 @@
+
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    container_name: auvren-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auvren
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: auvren
+    volumes:
+      - auvren_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auvren -d auvren"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: auvren-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://auvren:${POSTGRES_PASSWORD}@db:5432/auvren
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  auvren_postgres_data:

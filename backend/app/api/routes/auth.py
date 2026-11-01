@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
+from app.core.limiter import limiter
 
 from app.core.database import get_db
 from app.core.security import create_access_token
@@ -17,12 +19,15 @@ from app.services.auth_service import (
 router = APIRouter(prefix="/api/v1/auth", tags=["Autenticação"])
 
 
+
 @router.post(
     "/register",
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("3/hour")
 def register_endpoint(
+    request: Request,
     data: RegisterRequest,
     db: Session = Depends(get_db),
 ):
@@ -46,7 +51,9 @@ def register_endpoint(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 def login_endpoint(
+    request: Request,
     data: LoginRequest,
     db: Session = Depends(get_db),
 ):

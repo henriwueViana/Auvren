@@ -13,6 +13,8 @@ import { DashboardPage } from '../../features/dashboard/DashboardPage'
 import TicketsPage from '../../features/tickets/TicketsPage'
 import { AppLayout } from '../../components/layout/AppLayout'
 import { useAuthStore } from '../../stores/authStore'
+import TicketDetailsPage from '../../features/tickets/TicketDetailsPage'
+import UsersPage from '../../features/users/UsersPage'
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore(
@@ -52,16 +54,17 @@ export function AppRouter() {
             <Route path="/dashboard" element={<DashboardPage />} />
 
             <Route path="/tickets" element={<TicketsPage />} />
+            <Route
+              path="/tickets/:id"
+              element={<TicketDetailsPage />}
+            />
 
             <Route
               path="/triage"
               element={<PlaceholderPage title="Triagem IA" />}
             />
 
-            <Route
-              path="/users"
-              element={<PlaceholderPage title="Equipe" />}
-            />
+            <Route path="/users" element={<UsersPage />} />
           </Route>
         </Route>
 

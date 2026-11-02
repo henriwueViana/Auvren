@@ -4,6 +4,7 @@ import type {
   Ticket,
   TicketCreate,
   TicketStatusUpdate,
+  TicketHistory,
 } from '../../../types/ticket'
 
 export const ticketApi = {
@@ -16,6 +17,15 @@ export const ticketApi = {
     const response = await api.get<Ticket>(`/api/v1/tickets/${id}`)
     return response.data
   },
+
+  async getHistory(id: number): Promise<TicketHistory[]> {
+    const response = await api.get<TicketHistory[]>(
+      `/api/v1/tickets/${id}/history`
+    )
+
+    return response.data
+  },
+
 
   async create(data: TicketCreate): Promise<Ticket> {
     const response = await api.post<Ticket>('/api/v1/tickets', data)

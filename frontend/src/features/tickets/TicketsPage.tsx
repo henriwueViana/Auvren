@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react'
 import { AxiosError } from 'axios'
 import { Plus, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { useCreateTicket, useTickets } from './hooks/useTickets'
 import type {
@@ -255,9 +256,12 @@ export default function TicketsPage() {
                     className="transition-colors hover:bg-slate-800/50"
                   >
                     <td className="px-5 py-4">
-                      <p className="font-medium text-white">
+                      <Link
+                        to={`/tickets/${ticket.id}`}
+                        className="font-medium text-white transition-colors hover:text-indigo-400"
+                      >
                         {ticket.title}
-                      </p>
+                      </Link>
                       <p className="mt-1 text-xs text-slate-500">
                         #{ticket.id}
                       </p>

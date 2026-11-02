@@ -37,3 +37,11 @@ export interface TicketCreate {
 export interface TicketStatusUpdate {
   status: TicketStatus
 }
+
+export interface TicketHistory {
+  id: number
+  ticket_id: number
+  previous_status: TicketStatus
+  new_status: TicketStatus
+  changed_at: string
+}

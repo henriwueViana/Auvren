@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 
 import { ticketApi } from '../api/ticketApi'
+import type { TicketStatusUpdate } from '../../../types/ticket'
 
 export function useTickets() {
   return useQuery({
@@ -27,5 +28,37 @@ export function useCreateTicket() {
         queryKey: ['tickets'],
       })
     },
+  })
+}
+
+export function useUpdateTicketStatus(ticketId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: TicketStatusUpdate) =>
+      ticketApi.updateStatus(ticketId, data),
+
+    
+  onSuccess: async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ['tickets', ticketId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['tickets'],
+        exact: true,
+      }),
+    ])
+  },
+  })
+}
+
+export function useTicketHistory(ticketId: number) {
+  return useQuery({
+    queryKey: ['tickets', ticketId, 'history'],
+    queryFn: () => ticketApi.getHistory(ticketId),
+    enabled: Number.isInteger(ticketId) && ticketId > 0,
+    staleTime: 30_000,
+    retry: 1,
   })
 }

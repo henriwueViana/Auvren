@@ -8,9 +8,11 @@ import {
 } from 'react-router-dom'
 
 import { LoginPage } from '../../features/auth/LoginPage'
+import { RegisterPage } from '../../features/auth/RegisterPage'
+import { DashboardPage } from '../../features/dashboard/DashboardPage'
+import TicketsPage from '../../features/tickets/TicketsPage'
 import { AppLayout } from '../../components/layout/AppLayout'
 import { useAuthStore } from '../../stores/authStore'
-import { DashboardPage } from '../../features/dashboard/DashboardPage'
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore(
@@ -23,8 +25,6 @@ function ProtectedRoute() {
 
   return <Outlet />
 }
-
-
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -42,16 +42,16 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Rotas públicas */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
+        {/* Rotas protegidas */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
 
-            <Route
-              path="/tickets"
-              element={<PlaceholderPage title="Chamados" />}
-            />
+            <Route path="/tickets" element={<TicketsPage />} />
 
             <Route
               path="/triage"

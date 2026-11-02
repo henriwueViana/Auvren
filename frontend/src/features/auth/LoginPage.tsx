@@ -1,7 +1,7 @@
 
 import { useState, type FormEvent } from 'react'
 import axios from 'axios'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, LockKeyhole, Mail, LoaderCircle } from 'lucide-react'
 
 import { authApi } from './api/authApi'
@@ -140,6 +140,17 @@ export function LoginPage() {
               )}
             </button>
           </form>
+
+            <p className="mt-7 text-center text-sm text-slate-400">
+              Ainda não possui uma conta?{' '}
+              <Link
+                to="/register"
+                className="font-medium text-blue-400 hover:text-blue-300"
+              >
+                Criar conta
+              </Link>
+            </p>
+
         </div>
 
         <p className="mt-8 text-center text-xs text-slate-500">

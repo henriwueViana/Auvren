@@ -18,49 +18,42 @@ import TriagePage from '../../features/triage/TriagePage'
 import { AppLayout } from '../../components/layout/AppLayout'
 import { useAuthStore } from '../../stores/authStore'
 
+type UserRole = 'admin' | 'agent' | 'requester'
+
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore(
     (state) => state.isAuthenticated
   )
+  const user = useAuthStore((state) => state.user)
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
   }
 
   return <Outlet />
 }
 
-function AdminRoute() {
+function RoleRoute({
+  allowedRoles,
+}: {
+  allowedRoles: UserRole[]
+}) {
   const user = useAuthStore((state) => state.user)
 
-  if (user?.role !== 'admin') {
+  if (!user || !allowedRoles.includes(user.role as UserRole)) {
     return <Navigate to="/dashboard" replace />
   }
 
   return <Outlet />
 }
 
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold">{title}</h2>
-
-      <p className="mt-3 text-slate-400">
-        Esta funcionalidade será implementada em breve.
-      </p>
-    </div>
-  )
-}
-
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rotas públicas */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Rotas autenticadas */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route
@@ -78,13 +71,26 @@ export function AppRouter() {
               element={<TicketDetailsPage />}
             />
 
+            {/* Administradores e agentes */}
             <Route
-              path="/triage"
-              element={<TriagePage />}
-            />
+              element={
+                <RoleRoute
+                  allowedRoles={['admin', 'agent']}
+                />
+              }
+            >
+              <Route
+                path="/triage"
+                element={<TriagePage />}
+              />
+            </Route>
 
-            {/* Rotas exclusivas de administradores */}
-            <Route element={<AdminRoute />}>
+            {/* Apenas administradores */}
+            <Route
+              element={
+                <RoleRoute allowedRoles={['admin']} />
+              }
+            >
               <Route
                 path="/users"
                 element={<UsersPage />}
@@ -92,6 +98,11 @@ export function AppRouter() {
             </Route>
           </Route>
         </Route>
+
+        <Route
+          path="/"
+          element={<Navigate to="/dashboard" replace />}
+        />
 
         <Route
           path="*"

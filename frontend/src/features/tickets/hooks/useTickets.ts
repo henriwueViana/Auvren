@@ -17,6 +17,15 @@ export function useTickets() {
   })
 }
 
+export function useAllTickets() {
+  return useQuery({
+    queryKey: ['tickets', 'all'],
+    queryFn: ticketApi.listAll,
+    staleTime: 60_000,
+    retry: 1,
+  })
+}
+
 export function useCreateTicket() {
   const queryClient = useQueryClient()
 
@@ -31,6 +40,7 @@ export function useCreateTicket() {
   })
 }
 
+
 export function useUpdateTicketStatus(ticketId: number) {
   const queryClient = useQueryClient()
 
@@ -38,20 +48,14 @@ export function useUpdateTicketStatus(ticketId: number) {
     mutationFn: (data: TicketStatusUpdate) =>
       ticketApi.updateStatus(ticketId, data),
 
-    
-  onSuccess: async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ['tickets', ticketId],
-      }),
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
         queryKey: ['tickets'],
-        exact: true,
-      }),
-    ])
-  },
+      })
+    },
   })
 }
+
 
 export function useTicketHistory(ticketId: number) {
   return useQuery({

@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, Tag, History } from 'lucide-react'
 
 import { ticketApi } from './api/ticketApi'
+import { useAuthStore } from '../../stores/authStore'
 import {
   useTicketHistory,
   useUpdateTicketStatus,
@@ -47,6 +48,10 @@ const statusColors: Record<TicketStatus, string> = {
 
 export default function TicketDetailsPage() {
   const { id } = useParams()
+  const user = useAuthStore((state) => state.user)
+
+  const canManageTickets =
+    user?.role === 'admin' || user?.role === 'agent'
 
   const ticketId = Number(id)
   const validId = Number.isInteger(ticketId) && ticketId > 0
@@ -209,59 +214,63 @@ export default function TicketDetailsPage() {
             Informações
           </h2>
 
+          
           {/* Status */}
           <div>
-            <label
-              htmlFor="ticket-status"
-              className="mb-2 block text-xs text-slate-500"
-            >
+            <p className="mb-2 text-xs text-slate-500">
               Status
-            </label>
+            </p>
 
-            <select
-              id="ticket-status"
-              value={ticket.status}
-              disabled={updateStatus.isPending}
-              onChange={(event) => {
-                void handleStatusChange(
-                  event.target.value as TicketStatus
-                )
-              }}
-              className={`w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm font-medium outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 ${statusColors[ticket.status]}`}
-            >
-              {Object.entries(statusLabels).map(
-                ([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                )
-              )}
-            </select>
+            {canManageTickets ? (
+              <>
+                <select
+                  id="ticket-status"
+                  aria-label="Alterar status do chamado"
+                  value={ticket.status}
+                  disabled={updateStatus.isPending}
+                  onChange={(event) => {
+                    void handleStatusChange(
+                      event.target.value as TicketStatus
+                    )
+                  }}
+                  className={`w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm font-medium outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 ${statusColors[ticket.status]}`}
+                >
+                  {Object.entries(statusLabels).map(
+                    ([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    )
+                  )}
+                </select>
 
-            {updateStatus.isPending && (
-              <p className="mt-2 text-xs text-slate-400">
-                Atualizando status...
-              </p>
-            )}
+                {updateStatus.isPending && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    Atualizando status...
+                  </p>
+                )}
 
-            {statusError && (
-              <p
-                role="alert"
-                className="mt-2 text-xs text-red-400"
+                {statusError && (
+                  <p role="alert" className="mt-2 text-xs text-red-400">
+                    {statusError}
+                  </p>
+                )}
+
+                {statusSuccess && (
+                  <p role="status" className="mt-2 text-xs text-emerald-400">
+                    {statusSuccess}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div
+                className={`rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm font-medium ${statusColors[ticket.status]}`}
               >
-                {statusError}
-              </p>
-            )}
-
-            {statusSuccess && (
-              <p
-                role="status"
-                className="mt-2 text-xs text-emerald-400"
-              >
-                {statusSuccess}
-              </p>
+                {statusLabels[ticket.status]}
+              </div>
             )}
           </div>
+
 
           {/* Prioridade */}
           <div>

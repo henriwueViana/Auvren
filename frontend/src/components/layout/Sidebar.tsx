@@ -11,11 +11,38 @@ import {
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 
-const navigation = [
-  { label: 'Visão geral', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Chamados', path: '/tickets', icon: Ticket },
-  { label: 'Triagem IA', path: '/triage', icon: BrainCircuit },
-  { label: 'Equipe', path: '/users', icon: Users, adminOnly: true },
+type UserRole = 'admin' | 'agent' | 'requester'
+
+const navigation: {
+  label: string
+  path: string
+  icon: typeof Ticket
+  allowedRoles: UserRole[]
+}[] = [
+  {
+    label: 'Visão geral',
+    path: '/dashboard',
+    icon: LayoutDashboard,
+    allowedRoles: ['admin', 'agent', 'requester'],
+  },
+  {
+    label: 'Chamados',
+    path: '/tickets',
+    icon: Ticket,
+    allowedRoles: ['admin', 'agent', 'requester'],
+  },
+  {
+    label: 'Triagem IA',
+    path: '/triage',
+    icon: BrainCircuit,
+    allowedRoles: ['admin', 'agent'],
+  },
+  {
+    label: 'Equipe',
+    path: '/users',
+    icon: Users,
+    allowedRoles: ['admin'],
+  },
 ]
 
 export function Sidebar() {
@@ -24,10 +51,10 @@ export function Sidebar() {
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
 
-  const isAdmin = user?.role === 'admin'
-
   const visibleNavigation = navigation.filter(
-    (item) => !('adminOnly' in item && item.adminOnly) || isAdmin
+    (item) =>
+      user &&
+      item.allowedRoles.includes(user.role as UserRole)
   )
 
   function handleLogout() {
@@ -74,6 +101,14 @@ export function Sidebar() {
 
           <p className="truncate text-xs text-slate-500">
             {user?.email}
+          </p>
+
+          <p className="mt-2 text-xs text-blue-400">
+            {user?.role === 'admin'
+              ? 'Administrador'
+              : user?.role === 'agent'
+                ? 'Agente de suporte'
+                : 'Funcionário'}
           </p>
         </div>
 

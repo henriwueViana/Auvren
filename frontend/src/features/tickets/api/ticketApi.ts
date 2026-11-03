@@ -13,8 +13,40 @@ export const ticketApi = {
     return response.data
   },
 
+  async listAll(): Promise<Ticket[]> {
+    const pageSize = 100
+    const allTickets: Ticket[] = []
+    let page = 1
+
+    while (true) {
+      const response = await api.get<Ticket[]>(
+        '/api/v1/tickets',
+        {
+          params: {
+            page,
+            limit: pageSize,
+          },
+        }
+      )
+
+      const tickets = response.data
+      allTickets.push(...tickets)
+
+      if (tickets.length < pageSize) {
+        break
+      }
+
+      page += 1
+    }
+
+    return allTickets
+  },
+
   async getById(id: number): Promise<Ticket> {
-    const response = await api.get<Ticket>(`/api/v1/tickets/${id}`)
+    const response = await api.get<Ticket>(
+      `/api/v1/tickets/${id}`
+    )
+
     return response.data
   },
 
@@ -26,9 +58,12 @@ export const ticketApi = {
     return response.data
   },
 
-
   async create(data: TicketCreate): Promise<Ticket> {
-    const response = await api.post<Ticket>('/api/v1/tickets', data)
+    const response = await api.post<Ticket>(
+      '/api/v1/tickets',
+      data
+    )
+
     return response.data
   },
 
@@ -38,8 +73,9 @@ export const ticketApi = {
   ): Promise<Ticket> {
     const response = await api.patch<Ticket>(
       `/api/v1/tickets/${id}/status`,
-      data,
+      data
     )
+
     return response.data
   },
 }

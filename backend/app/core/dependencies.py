@@ -53,3 +53,14 @@ def get_current_admin(
         )
 
     return current_user
+
+def get_current_support(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role not in ("admin", "agent"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores e agentes podem realizar esta operação.",
+        )
+
+    return current_user

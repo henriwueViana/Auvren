@@ -10,6 +10,7 @@ const initialForm: UserCreate = {
   name: '',
   email: '',
   password: '',
+  role: 'requester',
 }
 
 export default function UsersPage() {
@@ -166,6 +167,41 @@ export default function UsersPage() {
             />
           </div>
 
+<div>
+  <label
+    htmlFor="user-role"
+    className="mb-2 block text-sm text-slate-300"
+  >
+    Tipo de usuário
+  </label>
+
+  <select
+    id="user-role"
+    value={form.role}
+    onChange={(event) =>
+      setForm({
+        ...form,
+        role: event.target.value as UserCreate['role'],
+      })
+    }
+    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500"
+  >
+    <option value="requester">
+      Funcionário — abre e acompanha chamados
+    </option>
+
+    <option value="agent">
+      Agente — gerencia chamados
+    </option>
+  </select>
+
+  <p className="mt-2 text-xs text-slate-400">
+    Funcionários acompanham seus próprios chamados.
+    Agentes podem gerenciar os chamados da organização.
+  </p>
+</div>
+
+
           {formError && (
             <p role="alert" className="text-sm text-red-400">
               {formError}
@@ -238,9 +274,11 @@ export default function UsersPage() {
                     </td>
                     <td className="px-5 py-4 text-slate-300">
                       {user.role === 'admin'
-                        ? 'Administrador'
-                        : user.role === 'agent'
-                          ? 'Agente'
+                      ? 'Administrador'
+                      : user.role === 'agent'
+                        ? 'Agente'
+                        : user.role === 'requester'
+                          ? 'Funcionário'
                           : user.role}
                     </td>
                     <td className="px-5 py-4">

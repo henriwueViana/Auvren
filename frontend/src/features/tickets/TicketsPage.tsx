@@ -2,7 +2,7 @@
 import { useState, type FormEvent } from 'react'
 import { AxiosError } from 'axios'
 import { Plus, X } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { useCreateTicket, useTickets } from './hooks/useTickets'
 import type {
@@ -41,10 +41,13 @@ const initialForm: TicketCreate = {
 }
 
 export default function TicketsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { data: tickets = [], isLoading, isError, refetch } = useTickets()
   const createTicket = useCreateTicket()
 
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(
+  () => searchParams.get('new') === '1'
+)
   const [form, setForm] = useState<TicketCreate>({ ...initialForm })
   const [formError, setFormError] = useState('')
 
@@ -56,6 +59,16 @@ export default function TicketsPage() {
       await createTicket.mutateAsync(form)
       setForm({ ...initialForm })
       setShowForm(false)
+      if (searchParams.has('new')) {
+  setSearchParams(
+    (previous) => {
+      const next = new URLSearchParams(previous)
+      next.delete('new')
+      return next
+    },
+    { replace: true }
+  )
+}
     } catch (error) {
       if (error instanceof AxiosError) {
         if (error.response?.status === 422) {

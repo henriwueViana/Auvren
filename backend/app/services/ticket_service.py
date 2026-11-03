@@ -51,10 +51,16 @@ def list_tickets(
     search: str | None = None,
     sort_by: str = "created_at",
     sort_order: str = "desc",
+    requester_id: int | None = None,
 ) -> list[Ticket]:
     statement = select(Ticket).where(
         Ticket.organization_id == organization_id
     )
+
+    if requester_id is not None:
+        statement = statement.where(
+            Ticket.requester_id == requester_id
+        )
 
     if status:
         statement = statement.where(Ticket.status == status)
@@ -97,11 +103,17 @@ def get_ticket(
     db: Session,
     ticket_id: int,
     organization_id: int,
+    requester_id: int | None = None,
 ) -> Ticket | None:
     statement = select(Ticket).where(
         Ticket.id == ticket_id,
         Ticket.organization_id == organization_id,
     )
+
+    if requester_id is not None:
+        statement = statement.where(
+            Ticket.requester_id == requester_id
+        )
 
     return db.scalar(statement)
 
@@ -148,8 +160,14 @@ def list_ticket_status_history(
     db: Session,
     ticket_id: int,
     organization_id: int,
+    requester_id: int | None = None,
 ) -> list[TicketStatusHistory] | None:
-    ticket = get_ticket(db, ticket_id, organization_id)
+    ticket = get_ticket(
+        db,
+        ticket_id,
+        organization_id,
+        requester_id=requester_id,
+    )
 
     if ticket is None:
         return None

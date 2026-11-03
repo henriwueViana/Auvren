@@ -1,4 +1,6 @@
 
+export type UserRole = 'agent' | 'requester'
+
 export interface OrganizationUser {
   id: number
   organization_id: number
@@ -12,4 +14,5 @@ export interface UserCreate {
   name: string
   email: string
   password: string
+  role: UserRole
 }

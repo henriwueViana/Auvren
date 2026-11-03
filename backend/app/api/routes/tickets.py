@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_support
 from app.models.user import User
 from app.schemas.ticket import TicketCreate, TicketResponse, TicketStatusUpdate
 from app.schemas.ticket_status_history import TicketStatusHistoryResponse
@@ -27,6 +27,17 @@ from app.services.ticket_service import (
 )
 
 router = APIRouter(prefix="/api/v1/tickets", tags=["Tickets"])
+
+
+def get_requester_filter(current_user: User) -> int | None:
+    """
+    Requesters acessam somente seus próprios chamados.
+    Admins e agentes acessam os chamados da organização.
+    """
+    if current_user.role == "requester":
+        return current_user.id
+
+    return None
 
 
 @router.post(
@@ -69,8 +80,17 @@ def list_tickets_endpoint(
         default=None,
         alias="category",
     ),
-    search: str | None = Query(default=None, min_length=1, max_length=200),
-    sort_by: Literal["created_at", "title", "status", "id"] = "created_at",
+    search: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=200,
+    ),
+    sort_by: Literal[
+        "created_at",
+        "title",
+        "status",
+        "id",
+    ] = "created_at",
     sort_order: Literal["asc", "desc"] = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -86,6 +106,7 @@ def list_tickets_endpoint(
         sort_order=sort_order,
         priority=priority_filter,
         category=category_filter,
+        requester_id=get_requester_filter(current_user),
     )
 
 
@@ -99,6 +120,7 @@ def get_ticket_endpoint(
         db,
         ticket_id,
         organization_id=current_user.organization_id,
+        requester_id=get_requester_filter(current_user),
     )
 
     if ticket is None:
@@ -110,12 +132,15 @@ def get_ticket_endpoint(
     return ticket
 
 
-@router.patch("/{ticket_id}/status", response_model=TicketResponse)
+@router.patch(
+    "/{ticket_id}/status",
+    response_model=TicketResponse,
+)
 def update_ticket_status_endpoint(
     ticket_id: int,
     data: TicketStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_support),
 ):
     try:
         ticket = update_ticket_status(
@@ -124,6 +149,7 @@ def update_ticket_status_endpoint(
             data.status,
             organization_id=current_user.organization_id,
         )
+
     except InvalidStatusTransition as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -152,6 +178,7 @@ def list_ticket_status_history_endpoint(
         db,
         ticket_id,
         organization_id=current_user.organization_id,
+        requester_id=get_requester_filter(current_user),
     )
 
     if history is None:
@@ -171,7 +198,7 @@ def list_ticket_status_history_endpoint(
 def create_triage_endpoint(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_support),
 ):
     ticket = get_ticket(
         db,
@@ -187,11 +214,13 @@ def create_triage_endpoint(
 
     try:
         return create_ticket_triage(db, ticket)
+
     except TriageProviderError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -206,7 +235,7 @@ def create_triage_endpoint(
 def list_triages_endpoint(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_support),
 ):
     triages = list_ticket_triages(
         db,
@@ -232,7 +261,7 @@ def review_triage_endpoint(
     triage_id: int,
     data: TicketTriageReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_support),
 ):
     try:
         triage = review_ticket_triage(
@@ -243,6 +272,7 @@ def review_triage_endpoint(
             reviewer_id=current_user.id,
             review_status=data.review_status,
         )
+
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

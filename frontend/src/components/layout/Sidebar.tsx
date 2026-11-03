@@ -7,6 +7,7 @@ import {
   Users,
   Layers3,
 } from 'lucide-react'
+
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -14,13 +15,20 @@ const navigation = [
   { label: 'Visão geral', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Chamados', path: '/tickets', icon: Ticket },
   { label: 'Triagem IA', path: '/triage', icon: BrainCircuit },
-  { label: 'Equipe', path: '/users', icon: Users },
+  { label: 'Equipe', path: '/users', icon: Users, adminOnly: true },
 ]
 
 export function Sidebar() {
   const navigate = useNavigate()
+
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+
+  const isAdmin = user?.role === 'admin'
+
+  const visibleNavigation = navigation.filter(
+    (item) => !('adminOnly' in item && item.adminOnly) || isAdmin
+  )
 
   function handleLogout() {
     logout()
@@ -40,7 +48,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-2">
-        {navigation.map(({ label, path, icon: Icon }) => (
+        {visibleNavigation.map(({ label, path, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}
@@ -63,6 +71,7 @@ export function Sidebar() {
           <p className="truncate text-sm font-semibold">
             {user?.name}
           </p>
+
           <p className="truncate text-xs text-slate-500">
             {user?.email}
           </p>

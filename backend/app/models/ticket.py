@@ -9,15 +9,32 @@ from app.core.database import Base
 class Ticket(Base):
     __tablename__ = "tickets"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    organization_id: Mapped[int] = mapped_column(
-    ForeignKey("organizations.id", ondelete="CASCADE"),
-    nullable=False,
-    index=True,
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True,
     )
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    
+
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    requester_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    description: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
 
     status: Mapped[str] = mapped_column(
         String(30),
@@ -44,8 +61,13 @@ class Ticket(Base):
         server_default=func.now(),
         nullable=False,
     )
+
     organization: Mapped["Organization"] = relationship(
         back_populates="tickets",
+    )
+
+    requester: Mapped["User | None"] = relationship(
+        foreign_keys=[requester_id],
     )
 
     triages: Mapped[list["TicketTriage"]] = relationship(

@@ -22,9 +22,11 @@ def create_ticket(
     db: Session,
     data: TicketCreate,
     organization_id: int,
+    requester_id: int | None = None,
 ) -> Ticket:
     ticket = Ticket(
         organization_id=organization_id,
+        requester_id=requester_id,
         title=data.title,
         description=data.description,
         priority=data.priority,

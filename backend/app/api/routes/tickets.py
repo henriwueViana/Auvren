@@ -43,6 +43,7 @@ def create_ticket_endpoint(
         db,
         data,
         organization_id=current_user.organization_id,
+        requester_id=current_user.id,
     )
 
 
@@ -246,7 +247,7 @@ def review_triage_endpoint(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
-        )
+        ) from exc
 
     if triage is None:
         raise HTTPException(

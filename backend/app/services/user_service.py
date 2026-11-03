@@ -32,7 +32,7 @@ def create_user(
         name=data.name.strip(),
         email=email,
         hashed_password=hash_password(data.password),
-        role="agent",
+        role=data.role,
         is_active=True,
     )
 
